@@ -31,8 +31,12 @@ class JS_API:
     def get_stats(self):
         return API.get_stats()
 
-    # Tabs
+    # Tabs — controlled from JS to avoid race with loaded events
     def get_tabs(self):
+        return API.get_tabs()
+
+    def init_tabs(self, url, title="New Tab"):
+        API.init_tabs(url)
         return API.get_tabs()
 
     def add_tab(self, url=None):
@@ -43,6 +47,10 @@ class JS_API:
 
     def switch_tab(self, tab_id):
         API.switch_tab(tab_id)
+
+    def update_active_tab(self, url, title):
+        API.update_active_tab(url, title)
+        return API.get_tabs()
 
     # Bookmarks
     def get_bookmarks(self):
@@ -128,10 +136,8 @@ def on_page_loaded(window):
     try:
         try:
             url = window.get_current_url()
-            title = window.evaluate_js("document.title") or "Untitled"
-            API.update_active_tab(url, title)
         except Exception:
-            pass
+            url = "about:blank"
         inject_overlay(window)
         update_stealth_ui(window)
     except Exception:
@@ -143,6 +149,8 @@ def main():
     if not os.path.exists(start):
         start = "about:blank"
 
+    API.set_start_url(start)
+
     window = webview.create_window(
         title="Obsidian Browser",
         url=start,
@@ -153,9 +161,8 @@ def main():
         text_select=True,
     )
 
-    API.init_tabs(start)
-    window.events.loaded += lambda: on_page_loaded(window)
     API.set_window(window)
+    window.events.loaded += lambda: on_page_loaded(window)
 
     webview.start(debug=False)
 

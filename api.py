@@ -19,12 +19,16 @@ class ObsidianAPI:
         self._active_tab_id = None
         self._bookmarks = []
         self._devtools_open = False
+        self._initialized = False
         self.stealth_engine.on("status", self._on_stealth_status)
         self.stealth_engine.on("page_loaded", self._on_stealth_page)
         self.stealth_engine.on("result", self._on_stealth_result)
 
     def set_window(self, window):
         self._window = window
+
+    def set_start_url(self, url):
+        self._start_url = url
 
     def _js(self, code):
         if self._window:
@@ -39,33 +43,43 @@ class ObsidianAPI:
             self._activity_log.pop()
 
     # ─── Tabs ─────────────────────────────────────────────────
-    def init_tabs(self, start_url):
+    def init_tabs(self, url):
         tab_id = "tab_" + uuid.uuid4().hex[:6]
-        self._tabs = [{"id": tab_id, "url": start_url, "title": "New Tab"}]
+        self._tabs = [{"id": tab_id, "url": url, "title": "New Tab"}]
         self._active_tab_id = tab_id
-        self._log(f"Initialized tabs: {start_url}")
+        self._initialized = True
+        self._log(f"init_tabs: {url[:60]}")
+
+    def reset_to_single_tab(self, url=None):
+        if not self._initialized:
+            return
+        if len(self._tabs) == 1:
+            return
+        # Keep active tab, discard extras (safety for startup race conditions)
+        active = next((t for t in self._tabs if t["id"] == self._active_tab_id), None)
+        if active:
+            self._tabs = [active]
+        else:
+            tab_id = "tab_" + uuid.uuid4().hex[:6]
+            self._tabs = [{"id": tab_id, "url": url or self._start_url, "title": "New Tab"}]
+            self._active_tab_id = tab_id
+        self._log(f"Reset to single tab ({len(self._tabs)})")
 
     def get_tabs(self):
-        # Safety: ensure exactly 1 tab during initialization
-        if len(self._tabs) != 1 and self._active_tab_id is not None:
-            # Deduplicate: keep only the active tab
-            active = next((t for t in self._tabs if t["id"] == self._active_tab_id), None)
-            if active:
-                self._tabs = [active]
-            else:
-                self._tabs = self._tabs[:1]
+        if self._initialized and len(self._tabs) != 1:
+            self.reset_to_single_tab()
         return {"tabs": self._tabs, "active": self._active_tab_id}
 
     def add_tab(self, url=None):
         if not url:
-            url = "about:blank"
+            url = getattr(self, '_start_url', None) or "about:blank"
         tab_id = "tab_" + uuid.uuid4().hex[:6]
         tab = {"id": tab_id, "url": url, "title": "New Tab"}
         self._tabs.append(tab)
         self._active_tab_id = tab_id
         if self._window:
             self._window.load_url(url)
-        self._log(f"New tab: {url}")
+        self._log(f"New tab: {url[:60]}")
         return tab_id
 
     def close_tab(self, tab_id):

@@ -15,6 +15,8 @@
   function pageRefresh() {
     protectPadding();
     fixFixedHeaders();
+    // Update active tab URL from JS (avoids Python race with loaded events)
+    try { pywebview.api.update_active_tab(window.location.href, document.title || 'Untitled'); } catch(e) {}
     loadTabs();
     loadBookmarks();
     var u = document.getElementById('obs-url');
@@ -55,8 +57,8 @@
       '.obs-tab-title{overflow:hidden!important;text-overflow:ellipsis!important;max-width:110px!important;display:inline-block!important}',
       '.obs-tab-close{background:none!important;border:none!important;color:#666!important;font-size:12px!important;cursor:pointer!important;padding:0 2px!important;line-height:1!important;transition:color .15s ease!important}',
       '.obs-tab-close:hover{color:#e94560!important}',
-      '.obs-tab-add{background:none!important;border:none!important;color:#888!important;font-size:16px!important;cursor:pointer!important;padding:0 6px!important;height:24px!important;display:inline-flex!important;align-items:center!important;flex-shrink:0!important;transition:color .15s ease!important}',
-      '.obs-tab-add:hover{color:#fff!important}',
+      '.obs-tab-add{background:none!important;border:none!important;color:#555!important;font-size:18px!important;cursor:pointer!important;padding:0 2px!important;height:22px!important;width:22px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important;border-radius:50%!important;transition:all .15s ease!important;margin-top:1px!important}',
+      '.obs-tab-add:hover{background:#0f3460!important;color:#fff!important}',
       // Status bar
       '#obs-status{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:2147483647!important;display:flex!important;justify-content:space-between!important;padding:2px 8px!important;background:linear-gradient(135deg,#0d1117,#141a26)!important;border-top:1px solid #0f3460!important;height:22px!important;align-items:center!important;font-size:10px!important;color:#888!important}',
       '#obs-status-left{display:flex!important;align-items:center!important;gap:8px!important;overflow:hidden!important;flex:1!important}',
@@ -1484,12 +1486,16 @@
   setupKeyboard();
   fixFixedHeaders();
   positionDropdowns();
-  loadTabs();
-  loadBookmarks();
+  // Initialize tabs from JS (avoids Python race with loaded events)
+  try {
+    pywebview.api.init_tabs(window.location.href, document.title || 'New Tab').then(function() {
+      loadTabs();
+      loadBookmarks();
+    });
+  } catch(e) { loadTabs(); loadBookmarks(); }
   if (window.obsidian.refreshStatusBar) window.obsidian.refreshStatusBar();
-  // Mark as initialized FIRST so subsequent loaded events skip full init
   window.obsidian._initialized = true;
-  // Enable stealth ON by default on first run (engine starts OFF, toggle enables it)
+  // Enable stealth ON by default on first run
   try {
     pywebview.api.toggle_stealth().then(function(en) {
       if (window.obsidian.setStealthStatus) window.obsidian.setStealthStatus(!!en);
