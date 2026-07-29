@@ -19,6 +19,9 @@ class JS_API:
     def toggle_stealth(self):
         return API.toggle_stealth()
 
+    def start_stealth(self):
+        return API.start_stealth()
+
     def stealth_status(self):
         return API.stealth_engine.enabled if API.stealth_engine else False
 
@@ -134,14 +137,10 @@ def update_stealth_ui(window):
 
 def on_page_loaded(window):
     try:
-        try:
-            url = window.get_current_url()
-        except Exception:
-            url = "about:blank"
         inject_overlay(window)
         update_stealth_ui(window)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Obsidian] on_page_loaded error: {e}")
 
 
 def main():

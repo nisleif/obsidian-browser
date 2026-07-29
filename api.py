@@ -20,6 +20,7 @@ class ObsidianAPI:
         self._bookmarks = []
         self._devtools_open = False
         self._initialized = False
+        self._stealth_started = False  # Track: only start stealth ONCE
         self.stealth_engine.on("status", self._on_stealth_status)
         self.stealth_engine.on("page_loaded", self._on_stealth_page)
         self.stealth_engine.on("result", self._on_stealth_result)
@@ -196,6 +197,14 @@ class ObsidianAPI:
                 self._log("Stealth activated")
             return self.stealth_engine.enabled
         return False
+
+    def start_stealth(self):
+        """Start stealth exactly once (called from JS on first page load)."""
+        if not self._stealth_started and self.stealth_engine:
+            self._stealth_started = True
+            self.stealth_engine.start(headless=True)
+            self._log("Stealth auto-started")
+        return self.stealth_engine.enabled if self.stealth_engine else False
 
     def scrape_current(self):
         if not self.stealth_engine.enabled:

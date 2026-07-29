@@ -12,6 +12,20 @@
   var toolbarInjected = false;
   var shieldOpen = false;
 
+  // ─── Toast notification system ──────────────────────────────
+  function showToast(msg, duration) {
+    duration = duration || 2500;
+    var t = document.getElementById('obs-toast');
+    if (!t) {
+      t = tag('div', {id:'obs-toast'});
+      document.body.appendChild(t);
+    }
+    clear(t); t.appendChild(txt(msg));
+    t.style.cssText = 'position:fixed!important;bottom:28px!important;left:50%!important;transform:translateX(-50%)!important;background:#16213e!important;color:#eee!important;padding:6px 16px!important;border-radius:6px!important;border:1px solid #0f3460!important;font-size:12px!important;z-index:2147483647!important;font-family:sans-serif!important;box-shadow:0 4px 12px rgba(0,0,0,.4)!important;opacity:1!important;transition:opacity .3s ease!important;pointer-events:none!important';
+    if (window._obsToastTimer) clearTimeout(window._obsToastTimer);
+    window._obsToastTimer = setTimeout(function() { t.style.opacity = '0'; }, duration);
+  }
+
   function pageRefresh() {
     protectPadding();
     fixFixedHeaders();
@@ -166,7 +180,7 @@
     var statusText = tag('span', {id:'obs-status-text'}); statusText.appendChild(txt('Obsidian Ready'));
     statusL.appendChild(statusText);
     var statusR = tag('span', {id:'obs-status-right'});
-    var stStealth = tag('span', {id:'obs-st-stealth',class:'obs-st-badge stealth-off'}); stStealth.appendChild(txt('\u26D2 Stealth: OFF'));
+    var stStealth = tag('span', {id:'obs-st-stealth',class:'obs-st-badge stealth-on'}); stStealth.appendChild(txt('\u26D2 Stealth: ON'));
     var stAds = tag('span', {id:'obs-st-ads',class:'obs-st-badge ads'}); stAds.appendChild(txt('Ads: 0'));
     var stHttps = tag('span', {id:'obs-st-https',class:'obs-st-badge https'}); stHttps.appendChild(txt('HTTPS'));
     statusR.append(stStealth, stAds, stHttps);
@@ -212,7 +226,7 @@
       var menu = tag('div', {id:'obs-menu'});
       var mi = [
         {html:'\u2B50 Bookmark This Page', action:function(){ doBookmark(); }},
-        {html:'\u{1F4D1} Bookmarks', action:function(){ toggleBookmarks(); }},
+        {html:'\u{1F4D1} Toggle Bookmarks Bar', action:function(){ toggleBookmarks(); }},
         {sep:true},
         {html:'\u{1F50D} Scrape Links', action:function(){ doScrapeLinks(); }},
         {html:'\u{1F5BC} Scrape Images', action:function(){ doScrapeImages(); }},
@@ -270,6 +284,7 @@
       try {
         pywebview.api.toggle_stealth().then(function(en) {
           window.obsidian.setStealthStatus(en);
+          showToast(en ? 'Stealth Mode ON' : 'Stealth Mode OFF');
         });
       } catch(e) {}
     };
@@ -347,7 +362,10 @@
 
   function doBookmark() {
     try {
-      pywebview.api.add_bookmark(window.location.href, document.title).then(function() { loadBookmarks(); });
+      pywebview.api.add_bookmark(window.location.href, document.title).then(function(bms) {
+        loadBookmarks();
+        showToast('\u2B50 Bookmarked: ' + (document.title || window.location.href).substring(0, 40));
+      });
     } catch(e) {}
   }
 
@@ -1495,10 +1513,13 @@
   } catch(e) { loadTabs(); loadBookmarks(); }
   if (window.obsidian.refreshStatusBar) window.obsidian.refreshStatusBar();
   window.obsidian._initialized = true;
-  // Enable stealth ON by default on first run
+  // Start stealth ON exactly once (not toggle — avoids disabling on re-navigation)
   try {
-    pywebview.api.toggle_stealth().then(function(en) {
-      if (window.obsidian.setStealthStatus) window.obsidian.setStealthStatus(!!en);
+    pywebview.api.start_stealth().then(function(en) {
+      if (window.obsidian.setStealthStatus) {
+        window.obsidian.setStealthStatus(!!en);
+        if (en) showToast('\u26D2 Stealth Mode active');
+      }
     });
   } catch(e) {}
 })();
