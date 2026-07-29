@@ -26,14 +26,14 @@ class SecurityTools:
 
     def _request(self, url, method="GET", timeout=5):
         if HAS_REQUESTS:
-            kwargs = {"headers": {"User-Agent": self.user_agent}, "timeout": timeout, "allow_redirects": True, "verify": False}
+            kwargs = {"headers": {"User-Agent": self.user_agent, "DNT": "1"}, "timeout": timeout, "allow_redirects": True, "verify": False}
             if self._proxy_enabled and self._proxy_url:
                 kwargs["proxies"] = {"http": self._proxy_url, "https": self._proxy_url}
             r = requests.request(method, url, **kwargs)
             return {"status": r.status_code, "headers": dict(r.headers), "body": r.text, "url": r.url}
         else:
             req = urllib.request.Request(url, method=method,
-                                         headers={"User-Agent": self.user_agent})
+                                         headers={"User-Agent": self.user_agent, "DNT": "1"})
             if self._proxy_enabled and self._proxy_url:
                 handler = urllib.request.ProxyHandler({"http": self._proxy_url, "https": self._proxy_url})
                 opener = urllib.request.build_opener(handler)

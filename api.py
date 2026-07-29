@@ -43,8 +43,17 @@ class ObsidianAPI:
         tab_id = "tab_" + uuid.uuid4().hex[:6]
         self._tabs = [{"id": tab_id, "url": start_url, "title": "New Tab"}]
         self._active_tab_id = tab_id
+        self._log(f"Initialized tabs: {start_url}")
 
     def get_tabs(self):
+        # Safety: ensure exactly 1 tab during initialization
+        if len(self._tabs) != 1 and self._active_tab_id is not None:
+            # Deduplicate: keep only the active tab
+            active = next((t for t in self._tabs if t["id"] == self._active_tab_id), None)
+            if active:
+                self._tabs = [active]
+            else:
+                self._tabs = self._tabs[:1]
         return {"tabs": self._tabs, "active": self._active_tab_id}
 
     def add_tab(self, url=None):

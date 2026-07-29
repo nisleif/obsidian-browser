@@ -3,35 +3,62 @@
 <head><meta charset="utf-8"><title>Obsidian Browser</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;overflow:hidden}
+.splash{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .6s ease,transform .6s ease}
+.splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+.splash-logo{font-size:72px;margin-bottom:16px;animation:splashPulse 1.5s ease-in-out infinite}
+.splash-title{font-size:42px;font-weight:700;color:#e94560;margin-bottom:8px;letter-spacing:2px}
+.splash-sub{color:#667;font-size:14px;letter-spacing:1px}
+.splash-bar{width:200px;height:3px;background:#0f3460;border-radius:2px;margin-top:30px;overflow:hidden}
+.splash-bar-inner{height:100%;width:0;background:linear-gradient(90deg,#e94560,#ff6b6b);border-radius:2px;animation:splashLoad 1.8s ease forwards}
+@keyframes splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes splashLoad{0%{width:0}100%{width:100%}}
+.content{opacity:0;transition:opacity .8s ease;text-align:center}
+.content.show{opacity:1}
 h1{font-size:48px;color:#e94560;margin-bottom:8px}
 p{color:#888;font-size:14px;margin-bottom:30px}
-.search-box{display:flex;gap:8px;width:600px;max-width:90%}
-.search-box input{flex:1;padding:14px 18px;border:1px solid #0f3460;border-radius:10px;background:#16213e;color:#eee;font-size:15px;outline:none}
-.search-box input:focus{border-color:#e94560}
-.search-box button{padding:14px 28px;background:#e94560;color:#fff;border:none;border-radius:10px;font-size:15px;cursor:pointer}
+.search-box{display:flex;gap:8px;width:600px;max-width:90%;margin:0 auto}
+.search-box input{flex:1;padding:14px 18px;border:1px solid #0f3460;border-radius:10px;background:#16213e;color:#eee;font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s}
+.search-box input:focus{border-color:#e94560;box-shadow:0 0 0 3px rgba(233,69,96,.15)}
+.search-box button{padding:14px 28px;background:#e94560;color:#fff;border:none;border-radius:10px;font-size:15px;cursor:pointer;transition:background .2s,transform .15s}
+.search-box button:hover{background:#d63850;transform:scale(1.03)}
 .shortcuts{display:flex;gap:16px;margin-top:40px;flex-wrap:wrap;justify-content:center}
-.shortcut{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 24px;background:#16213e;border-radius:12px;border:1px solid #0f3460;cursor:pointer;text-decoration:none;color:#aaa;font-size:12px;transition:all 0.2s}
-.shortcut:hover{background:#0f3460;color:#fff;border-color:#e94560}
+.shortcut{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 24px;background:#16213e;border-radius:12px;border:1px solid #0f3460;cursor:pointer;text-decoration:none;color:#aaa;font-size:12px;transition:all .2s ease}
+.shortcut:hover{background:#0f3460;color:#fff;border-color:#e94560;transform:translateY(-2px);box-shadow:0 4px 12px rgba(233,69,96,.2)}
 .shortcut .icon{font-size:28px}
 .footer{position:fixed;bottom:12px;color:#444;font-size:11px}
 </style>
 </head>
 <body>
-<h1>Obsidian</h1>
-<p>Stealth browser · Web scraper · AI-ready</p>
-<div class="search-box">
-  <input id="q" type="text" placeholder="Search or enter URL..." autofocus>
-  <button id="go">Go</button>
+<div class="splash" id="splash">
+  <div class="splash-logo">&#x1F5E1;&#xFE0F;</div>
+  <div class="splash-title">OBSIDIAN</div>
+  <div class="splash-sub">Stealth Browser &middot; Security Tools</div>
+  <div class="splash-bar"><div class="splash-bar-inner"></div></div>
 </div>
-<div class="shortcuts">
-  <a class="shortcut" href="https://www.google.com"><span class="icon">🔍</span>Google</a>
-  <a class="shortcut" href="https://www.github.com"><span class="icon">🐙</span>GitHub</a>
-  <a class="shortcut" href="https://www.reddit.com"><span class="icon">💬</span>Reddit</a>
-  <a class="shortcut" href="https://en.wikipedia.org"><span class="icon">📚</span>Wikipedia</a>
+<div class="content" id="content">
+  <h1>Obsidian</h1>
+  <p>Stealth browser &middot; Web scraper &middot; Security tools</p>
+  <div class="search-box">
+    <input id="q" type="text" placeholder="Search or enter URL..." autofocus>
+    <button id="go">Go</button>
+  </div>
+  <div class="shortcuts">
+    <a class="shortcut" href="https://www.google.com"><span class="icon">&#x1F50D;</span>Google</a>
+    <a class="shortcut" href="https://www.github.com"><span class="icon">&#x1F419;</span>GitHub</a>
+    <a class="shortcut" href="https://www.reddit.com"><span class="icon">&#x1F4AC;</span>Reddit</a>
+    <a class="shortcut" href="https://en.wikipedia.org"><span class="icon">&#x1F4DA;</span>Wikipedia</a>
+  </div>
+  <div class="footer">Obsidian Browser v1.0 &middot; Built with pywebview &middot; CloakBrowser</div>
 </div>
-<div class="footer">Obsidian Browser v0.2.0</div>
 <script>
+setTimeout(function(){
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(function(){
+    document.getElementById('content').classList.add('show');
+    document.getElementById('q').focus();
+  }, 600);
+}, 2000);
 function go(){
   var q = document.getElementById('q').value.trim();
   if(!q) return;

@@ -1,12 +1,29 @@
 (function() {
   try { if (window.self !== window.top) return; } catch(e) {}
-  console.log('[Obsidian] Starting...');
+
+  // Guard: only run full setup once, but always run page-specific code
+  if (window.obsidian && window.obsidian._initialized) {
+    pageRefresh(); return;
+  }
 
   window.obsidian = window.obsidian || {};
   var docEl = document.documentElement;
   var state = { adsBlocked: 0 };
   var toolbarInjected = false;
   var shieldOpen = false;
+
+  function pageRefresh() {
+    protectPadding();
+    fixFixedHeaders();
+    loadTabs();
+    loadBookmarks();
+    var u = document.getElementById('obs-url');
+    if (u && u !== document.activeElement) u.value = window.location.href;
+    var st = document.getElementById('obs-status-text');
+    if (st) { clear(st); st.appendChild(txt(document.title || 'Obsidian')); }
+    fixFixedHeaders();
+    if (window.obsidian.refreshStatusBar) window.obsidian.refreshStatusBar();
+  }
 
   function $(id) { return document.getElementById(id); }
   function tag(name, attrs) {
@@ -21,26 +38,27 @@
   function applyCSS() {
     var css = [
       '#obs-toolbar{all:initial;display:block!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:2147483647!important;font-size:13px!important;line-height:1!important;direction:ltr!important;text-align:left!important;font-family:"Segoe UI",system-ui,sans-serif!important}',
-      '#obs-tb-bar{display:flex!important;align-items:center!important;gap:4px!important;padding:4px 8px!important;background:#16213e!important;border-bottom:1px solid #0f3460!important;height:34px!important}',
-      '.obs-btn{background:none!important;border:none!important;color:#a0a0c0!important;font-size:15px!important;padding:2px 6px!important;cursor:pointer!important;border-radius:3px!important;min-width:28px;height:24px;text-align:center!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}',
-      '.obs-btn:hover{background:#0f3460!important;color:#fff!important}',
+      '#obs-tb-bar{display:flex!important;align-items:center!important;gap:4px!important;padding:4px 8px!important;background:linear-gradient(135deg,#16213e,#1a1a3e)!important;border-bottom:1px solid #0f3460!important;height:34px!important}',
+      '.obs-btn{background:none!important;border:none!important;color:#a0a0c0!important;font-size:15px!important;padding:2px 6px!important;cursor:pointer!important;border-radius:4px!important;min-width:28px;height:24px;text-align:center!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;transition:all .15s ease!important}',
+      '.obs-btn:hover{background:#0f3460!important;color:#fff!important;transform:scale(1.05)!important}',
       '.obs-btn.active{color:#e94560!important}',
-      '#obs-url{flex:1!important;padding:3px 8px!important;border:1px solid #0f3460!important;border-radius:4px!important;background:#1a1a2e!important;color:#eee!important;font-size:12px!important;outline:none!important;margin:0 4px!important;height:24px!important;min-width:0!important}',
-      '#obs-url:focus{border-color:#e94560!important}',
+      '#obs-url{flex:1!important;padding:3px 8px!important;border:1px solid #0f3460!important;border-radius:6px!important;background:#1a1a2e!important;color:#eee!important;font-size:12px!important;outline:none!important;margin:0 4px!important;height:24px!important;min-width:0!important;transition:border-color .2s ease,box-shadow .2s ease!important}',
+      '#obs-url:focus{border-color:#e94560!important;box-shadow:0 0 0 2px rgba(233,69,96,.15)!important}',
       '#obs-url::placeholder{color:#555!important;opacity:1!important}',
       // Tab bar
       '#obs-tab-bar{display:flex!important;align-items:center!important;background:#0f3460!important;height:30px!important;padding:0 4px!important;gap:2px!important;overflow-x:auto!important}',
       '#obs-tab-bar::-webkit-scrollbar{height:2px!important}',
       '#obs-tab-bar::-webkit-scrollbar-thumb{background:#333!important;border-radius:2px!important}',
-      '.obs-tab{display:inline-flex!important;align-items:center!important;gap:4px!important;padding:2px 10px!important;background:#1a1a2e!important;border:1px solid #0f3460!important;border-radius:4px 4px 0 0!important;cursor:pointer!important;font-size:11px!important;color:#999!important;white-space:nowrap!important;max-width:160px!important;height:24px!important;flex-shrink:0!important}',
+      '.obs-tab{display:inline-flex!important;align-items:center!important;gap:4px!important;padding:2px 10px!important;background:#1a1a2e!important;border:1px solid #0f3460!important;border-radius:4px 4px 0 0!important;cursor:pointer!important;font-size:11px!important;color:#999!important;white-space:nowrap!important;max-width:160px!important;height:24px!important;flex-shrink:0!important;overflow:hidden!important;transition:all .15s ease!important}',
       '.obs-tab.active{background:#16213e!important;color:#eee!important;border-bottom-color:#16213e!important}',
       '.obs-tab:hover:not(.active){background:#1f1f3a!important;color:#ccc!important}',
-      '.obs-tab-close{background:none!important;border:none!important;color:#666!important;font-size:12px!important;cursor:pointer!important;padding:0 2px!important;line-height:1!important}',
+      '.obs-tab-title{overflow:hidden!important;text-overflow:ellipsis!important;max-width:110px!important;display:inline-block!important}',
+      '.obs-tab-close{background:none!important;border:none!important;color:#666!important;font-size:12px!important;cursor:pointer!important;padding:0 2px!important;line-height:1!important;transition:color .15s ease!important}',
       '.obs-tab-close:hover{color:#e94560!important}',
-      '.obs-tab-add{background:none!important;border:none!important;color:#888!important;font-size:16px!important;cursor:pointer!important;padding:0 6px!important;height:24px!important;display:inline-flex!important;align-items:center!important;flex-shrink:0!important}',
+      '.obs-tab-add{background:none!important;border:none!important;color:#888!important;font-size:16px!important;cursor:pointer!important;padding:0 6px!important;height:24px!important;display:inline-flex!important;align-items:center!important;flex-shrink:0!important;transition:color .15s ease!important}',
       '.obs-tab-add:hover{color:#fff!important}',
       // Status bar
-      '#obs-status{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:2147483647!important;display:flex!important;justify-content:space-between!important;padding:2px 8px!important;background:#0d1117!important;border-top:1px solid #0f3460!important;height:22px!important;align-items:center!important;font-size:10px!important;color:#888!important}',
+      '#obs-status{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:2147483647!important;display:flex!important;justify-content:space-between!important;padding:2px 8px!important;background:linear-gradient(135deg,#0d1117,#141a26)!important;border-top:1px solid #0f3460!important;height:22px!important;align-items:center!important;font-size:10px!important;color:#888!important}',
       '#obs-status-left{display:flex!important;align-items:center!important;gap:8px!important;overflow:hidden!important;flex:1!important}',
       '#obs-status-right{display:flex!important;align-items:center!important;gap:8px!important}',
       '.obs-st-badge{display:inline-flex!important;align-items:center!important;gap:3px!important;padding:1px 5px!important;border-radius:3px!important;font-size:9px!important;font-weight:600!important}',
@@ -50,8 +68,8 @@
       '.obs-st-badge.https{background:#0a2a0a!important;color:#66bb6a!important;border:1px solid #2e7d32!important}',
       '.obs-st-badge.http{background:#3a1a0a!important;color:#ffa726!important;border:1px solid #e65100!important}',
       // Shield dropdown
-      '#obs-shield-drop{position:fixed!important;top:88px!important;right:8px!important;width:240px!important;background:#16213e!important;border:1px solid #0f3460!important;border-radius:6px!important;z-index:2147483647!important;font-size:12px!important;color:#ccc!important;box-shadow:0 4px 12px rgba(0,0,0,.4)!important;display:none!important}',
-      '#obs-shield-drop.open{display:block!important}',
+      '#obs-shield-drop{position:fixed!important;right:8px!important;width:240px!important;background:#16213e!important;border:1px solid #0f3460!important;border-radius:8px!important;z-index:2147483647!important;font-size:12px!important;color:#ccc!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;opacity:0!important;visibility:hidden!important;transform:translateY(-6px)!important;transition:all .2s ease!important}',
+      '#obs-shield-drop.open{opacity:1!important;visibility:visible!important;transform:translateY(0)!important}',
       '#obs-shield-drop .sd-header{padding:10px 14px!important;background:#0f3460!important;border-radius:6px 6px 0 0!important;font-weight:600!important;color:#fff!important;font-size:13px!important}',
       '#obs-shield-drop .sd-row{display:flex!important;justify-content:space-between!important;align-items:center!important;padding:8px 14px!important;border-bottom:1px solid #1a1a2e!important}',
       '#obs-shield-drop .sd-label{color:#888!important}',
@@ -75,16 +93,17 @@
       '.obs-bm-add{background:none!important;border:none!important;color:#555!important;font-size:14px!important;cursor:pointer!important;padding:2px 4px!important}',
       '.obs-bm-add:hover{color:#fff!important}',
       // Menu
-      '#obs-menu{position:fixed!important;top:88px!important;right:8px!important;width:200px!important;background:#16213e!important;border:1px solid #0f3460!important;border-radius:6px!important;z-index:2147483647!important;font-size:12px!important;color:#ccc!important;box-shadow:0 4px 12px rgba(0,0,0,.4)!important;display:none!important}',
-      '#obs-menu.open{display:block!important}',
+      '#obs-menu{position:fixed!important;right:8px!important;width:200px!important;background:#16213e!important;border:1px solid #0f3460!important;border-radius:8px!important;z-index:2147483647!important;font-size:12px!important;color:#ccc!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;opacity:0!important;visibility:hidden!important;transform:translateY(-6px)!important;transition:all .2s ease!important}',
+      '#obs-menu.open{opacity:1!important;visibility:visible!important;transform:translateY(0)!important}',
       '.obs-menu-item{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;padding:8px 14px!important;border:none!important;background:none!important;color:#ccc!important;text-align:left!important;cursor:pointer!important;font-size:12px!important;font-family:inherit!important}',
       '.obs-menu-item:hover{background:#0f3460!important;color:#fff!important}',
       '.obs-menu-sep{height:1px!important;background:#0f3460!important;margin:4px 8px!important}',
       // Scrape output
       '#obs-scrape{position:fixed!important;bottom:22px!important;right:8px!important;width:400px!important;max-height:300px!important;background:#1a1a2e!important;border:1px solid #0f3460!important;border-radius:6px!important;padding:8px!important;overflow:auto!important;z-index:2147483646!important;font-size:11px!important;color:#ccc!important;white-space:pre-wrap!important;word-break:break-all!important;font-family:monospace!important}',
       // Obsidian Tools Panel
-      '#obs-tp{position:fixed!important;top:88px!important;right:0!important;width:360px!important;bottom:20px!important;background:#16213e!important;border-left:1px solid #0f3460!important;z-index:2147483646!important;font-size:12px!important;color:#ccc!important;display:none!important;flex-direction:column!important;box-shadow:-4px 0 12px rgba(0,0,0,.3)!important}',
+      '#obs-tp{position:fixed!important;right:0!important;width:360px!important;bottom:20px!important;background:#16213e!important;border-left:1px solid #0f3460!important;z-index:2147483646!important;font-size:12px!important;color:#ccc!important;display:none!important;flex-direction:column!important;box-shadow:-6px 0 24px rgba(0,0,0,.4)!important;animation:obsSlideIn .2s ease!important}',
       '#obs-tp.open{display:flex!important}',
+      '@keyframes obsSlideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}',
       '#obs-tp-hdr{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:8px 12px!important;background:#0f3460!important;border-bottom:1px solid #1a1a2e!important;flex-shrink:0!important}',
       '#obs-tp-hdr span{font-weight:600!important;color:#fff!important;font-size:13px!important}',
       '#obs-tp-close{background:none!important;border:none!important;color:#888!important;font-size:18px!important;cursor:pointer!important;padding:0 4px!important;line-height:1!important}',
@@ -281,7 +300,7 @@
       pywebview.api.get_tabs().then(function(data) {
         if (!data || !data.tabs) return;
         data.tabs.forEach(function(t) {
-          var tabEl = tag('div', {class:'obs-tab' + (t.id === data.active ? ' active' : ''), 'data-id':t.id});
+          var tabEl = tag('div', {class:'obs-tab' + (t.id === data.active ? ' active' : ''), 'data-id':t.id, title:t.title || 'New Tab'});
           var title = tag('span', {class:'obs-tab-title'}); title.appendChild(txt(t.title || 'New Tab'));
           tabEl.appendChild(title);
           var closeBtn = tag('button', {class:'obs-tab-close'}); closeBtn.appendChild(txt('\u2716'));
@@ -466,7 +485,15 @@
     if (document.body) padGuard.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: false });
   }
 
-  // ─── Re-injection Guard ─────────────────────────────────────
+  function positionDropdowns() {
+    var h = parseInt(calcPaddingTop()) || 88;
+    var sd = document.getElementById('obs-shield-drop');
+    if (sd) sd.style.top = h + 'px';
+    var mn = document.getElementById('obs-menu');
+    if (mn) mn.style.top = h + 'px';
+    var tp = document.getElementById('obs-tp');
+    if (tp) tp.style.top = h + 'px';
+  }
   function protectToolbar() {
     var guard = new MutationObserver(function(muts) {
       for (var i = 0; i < muts.length; i++) {
@@ -480,12 +507,19 @@
     if (document.body) guard.observe(document.body, { childList: true, subtree: false });
 
     var statusTicks = 0;
+    var _lastTitle = '';
     setInterval(function() {
       if (!$('obs-toolbar') && document.body) injectToolbar();
       var el = $('obs-url');
       if (el && el !== document.activeElement) el.value = window.location.href;
-      var st = $('obs-status-text');
-      if (st && toolbarInjected) { clear(st); st.appendChild(txt(document.title || 'Obsidian')); }
+      positionDropdowns();
+      // Update status text only on title change (don't overwrite custom messages)
+      var title = document.title || 'Obsidian';
+      if (title !== _lastTitle) {
+        var st = $('obs-status-text');
+        if (st && toolbarInjected) { clear(st); st.appendChild(txt(title)); }
+        _lastTitle = title;
+      }
       // Re-apply body padding if lost
       if (document.body) {
         var desired = calcPaddingTop();
@@ -553,7 +587,7 @@
     // Periodic rescan for SPA-loaded ads (YouTube)
     setInterval(function() {
       var c = scanAds();
-      if (c > 0) { var sb = $('obs-status-info'); if (sb) { clear(sb); sb.appendChild(txt('Ads: ' + state.adsBlocked)); } }
+      if (c > 0 && window.obsidian.refreshStatusBar) window.obsidian.refreshStatusBar();
     }, 3000);
   }
 
@@ -1448,15 +1482,17 @@
   protectPadding();
   setupAdblock();
   setupKeyboard();
-  fixFixedHeaders(); // Fix page headers to not overlap toolbar
-  // Initial status bar refresh
+  fixFixedHeaders();
+  positionDropdowns();
+  loadTabs();
+  loadBookmarks();
   if (window.obsidian.refreshStatusBar) window.obsidian.refreshStatusBar();
-  // Update stealth status from Python on next tick
+  // Mark as initialized FIRST so subsequent loaded events skip full init
+  window.obsidian._initialized = true;
+  // Enable stealth ON by default on first run (engine starts OFF, toggle enables it)
   try {
-    pywebview.api.get_stats().then(function(stats) {
-      if (stats && window.obsidian.setStealthStatus) {
-        window.obsidian.setStealthStatus(!!stats.stealth);
-      }
+    pywebview.api.toggle_stealth().then(function(en) {
+      if (window.obsidian.setStealthStatus) window.obsidian.setStealthStatus(!!en);
     });
   } catch(e) {}
 })();

@@ -1,0 +1,4 @@
+pywebview>=5.0
+cloakbrowser>=0.1.0
+requests>=2.31.0
+pyinstaller>=6.0
